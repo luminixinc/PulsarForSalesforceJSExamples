@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <title>Pulsar JS Hello World</title>
+
+    <script type="text/javascript">
+
+    /* ******************************
+     * BEGIN Pulsar bridge definition
+     * ******************************/
+
+        var BRIDGE_ON = true; // set to false to test file in desktop browser
+
+        var bridge = function() {
+
+            var jsbridge;
+            var _bridge = {};
+
+            /** **************************************************************
+             *  Sends a request (object containing type,
+             *  object, and data properties) across the JS Bridge,
+             *  and results are delivered to the callback function
+             *  @param {object} request data
+             *  @param {function} callback result function (called asynchronously)
+             * ***************************************************************/
+            _bridge.sendRequest = function(request, callbackFn) {
+                try {
+                    if (BRIDGE_ON) {
+                        jsbridge.send(request, callbackFn);
+                    } else {
+                        callbackFn({});
+                    }
+                } catch (err) {
+                    alert('Javascript-App bridge error: ' + err);
+                }
+            };
+
+            /** **************************************************************
+             * Add a handler for a particular notification
+             * @param {string} handlerName name of notification
+             * @param {function} handlerFn function called for notification
+             * ***************************************************************/
+            _bridge.addHandler = function(handlerName, handlerFn) {
+                jsbridge.registerHandler(handlerName, handlerFn);
+            };
+
+            /** **************************************************************
+             * Remove handler for a particular notification
+             * @param {string} handlerName name of notification
+             * ***************************************************************/
+            _bridge.removeHandler = function(handlerName) {
+                jsbridge.deregisterHandler(handlerName);
+            };
+
+            /** **************************************************************
+             * Initializes the JS Bridge.
+             * This should only be called once.
+             * @param {WebViewJavascriptBridge} _jsbridge the bridge
+             * ***************************************************************/
+            _bridge.init = function(_jsbridge) {
+                if (BRIDGE_ON) {
+                    _jsbridge.init(function(message, responseCallback) {
+                        console.log('Received message: ' + message);
+                    });
+
+                    jsbridge = _jsbridge;
+                }
+            };
+
+            /** **************************************************************
+             * Sets up JS Bridge without reinitializing.
+             * @param {WebViewJavascriptBridge} _jsbridge the bridge
+             * ***************************************************************/
+             _bridge.setup = function(_jsbridge) {
+                jsbridge = _jsbridge;
+            }
+
+            return _bridge;
+        }();
+
+    /* ******************************
+     *  END Pulsar bridge definition
+     * ******************************/
+
+    /**
+     * Helper function to extract URL query variables
+     * @param {string} variable name
+     */
+    function getQueryVariable(variable) {
+        const query = window.location.search.substring(1);
+        const vars = query.split("&");
+        for (var i = 0; i < vars.length; i++) {
+            const pair = vars[i].split("=");
+            if (pair[0] == variable) {
+                return pair[1];
+            }
+        }
+    }
+
+    /**
+     * Helper function to pretty-print data as JSON 
+     */
+    function stringify(obj) {
+        return JSON.stringify(obj, null, 4);
+    }
+    </script>
+
+
+    <!-- 
+        Sample code that uses the Pulsar JS Bridge 
+    -->
+    <script type="text/javascript">
+
+        // variables set during startup
+        var docNode = 'window.document';
+        var platform = 'unknown';
+        var inFSL = false;
+        var refObjectId = undefined;
+
+        window.onload = function () {
+            if ((window.top !== window.self) && window.parent.pulsar) {
+                // Embedded in FSL
+                inFSL = true;
+                docNode = 'window.iFrame.contentWindow.document';
+                bridge.setup(window.parent.pulsar.bridge);
+                startApp();
+            }
+            else if (window.pulsar) {
+                // Likely called from another HTML
+                bridge.init(window.pulsar.bridge);
+                startApp();
+            }
+            else {
+                // Launched stand-alone, startApp() on the bridge ready event
+                document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
+                    bridge.init(event.bridge);
+                    window.pulsar = {};
+                    pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
+                    startApp();
+                }, false);
+            }
+        };
+
+        function startApp() {
+            // if launched from a record, this is the object Id in question
+            refObjectId = getQueryVariable('ref_id');
+
+            // what environment are we running on?
+            getPlatform();
+
+            // what user are we running on behalf of?
+            getUserInfo();
+
+            // populate inital sync status
+            getSyncInfo();
+
+            // Add a handler to respond to sync progress updates
+            bridge.removeHandler("syncDataUpdate");
+            bridge.addHandler("syncDataUpdate", function(dataObj) {
+                if (dataObj.hasOwnProperty("syncpass") && dataObj.hasOwnProperty("syncpercent")) {
+                    const passNum = dataObj["syncpass"];
+                    const pctDone = dataObj["syncpercent"];
+                    //console.log("sync data update: " + passNum + " " + pctDone);
+                    disableSyncButton(true);
+                    disableInterruptButton(false);
+                    if (passNum >= 0) {
+                        const syncReportBody = document.getElementById("ManualSyncBody");
+                        syncReportBody.innerHTML = "Sync progress: pass " + passNum + "  " + pctDone + "%";
+                    }
+                }
+            });
+
+            // Add a handler to respond to sync finished event
+            bridge.removeHandler("syncDataFinished");
+            bridge.addHandler("syncDataFinished", function(dataObj) {
+                console.log("sync data finished");
+
+                disableSyncButton(false);
+                disableInterruptButton(true);
+
+                const syncReportBody = document.getElementById("ManualSyncBody");
+
+                if (dataObj.hasOwnProperty("success") && dataObj["success"]) {
+                    syncReportBody.innerHTML = "Sync Complete!";
+                } else {
+                    syncReportBody.innerHTML = "Sync Failed!";
+                }
+                getSyncInfo();
+            });
+
+            // register for global sync notifications
+            registerSync();
+        }
+
+        function getPlatform() {
+            var request = {};
+            var obj = {};
+            request["type"] = 'getPlatform';
+            request["data"] = obj;
+            bridge.sendRequest(request, function(responseData) {
+                console.log('platformInfo: ' + stringify(responseData));
+
+                const userInfoBody = document.getElementById("PlatformInfoBody");
+
+                if (responseData.type === "getplatformResponse" || responseData.type === "platformResponse") {
+                    platformStr = 'Running on the ' + responseData.data + ' platform';
+                    if (refObjectId) {
+                        platformStr += ', launched from record: ' + refObjectId;
+                    }
+                    console.log(platformStr);
+                    userInfoBody.innerHTML = platformStr;
+                } else {
+                    console.assert(responseData.type == 'error');
+                    var errStr = responseData.data;
+                    console.log('A problem occurred:\n' + errStr);
+                    console.log('Couldnt get platform!');
+                    userInfoBody.innerHTML = stringify(responseData.data);
+                }
+            });
+        }
+
+        function getUserInfo() {
+            var request = {};
+            var obj = {};
+            request["type"] = 'userInfo';
+            request["data"] = obj;
+            bridge.sendRequest(request, function(responseData) {
+                console.log('userInfo: ' + stringify(responseData));
+
+                const userInfoBody = document.getElementById("UserInfoBody");
+
+                if (responseData.type === "userInfoResponse") {
+                    userInfoBody.innerHTML = stringify(responseData.data);
+                } else {
+                    console.assert(responseData.type == 'error');
+                    const errStr = responseData.data;
+                    console.log('A problem occurred:\n' + errStr);
+                    userInfoBody.innerHTML = stringify(responseData.data);
+                }
+            });
+        }
+
+        function getSyncInfo() {
+            var request = {};
+            var obj = {};
+            request["type"] = 'syncInfo';
+            request["data"] = obj;
+            bridge.sendRequest(request, function(responseData) {
+                console.log('syncInfo: ' + stringify(responseData));
+
+                const syncInfoBody = document.getElementById("SyncInfoBody");
+
+                if (responseData.type === "syncinfoResponse") {
+                    syncInfoBody.innerHTML = stringify(responseData.data);
+
+                } else {
+                    console.assert(responseData.type == 'error');
+                    const errStr = responseData.data;
+                    console.log('A problem occurred:\n' + errStr);
+                    syncInfoBody.innerHTML = stringify(responseData.data);
+                }
+            });
+        }
+
+        function registerSync() {
+            var request = {};
+            request["type"] = 'registersync';
+            request["data"] = 'true'; // set to 'false' to unregister
+
+            bridge.sendRequest(request, function(responseData) {
+                if (responseData.type === "registersyncResponse") {
+                    console.log('registered for sync notifications: ' + stringify(responseData.data));
+                } else {
+                    console.assert(responseData.type == 'error');
+                    const errStr = responseData.data;
+                    console.log('A problem occurred:\n' + errStr);
+                    const syncReportBody = document.getElementById("ManualSyncBody");
+                    syncReportBody.innerHTML = "Sync Registration Failed: " + errStr;
+                }
+            });
+        }
+
+        function syncData() {
+            var request = {};
+            var obj = {};
+            obj["incremental"] = true;
+            request["type"] = 'syncData';
+            request["data"] = obj;
+
+            bridge.sendRequest(request, function(responseData) {
+                if (responseData.type === "syncDataResponse") {
+                    console.log('syncData: ' + stringify(responseData));
+                } else {
+                    console.assert(responseData.type == 'error');
+                    const errStr = responseData.data;
+                    console.log('A problem occurred:\n' + errStr);
+                    const syncReportBody = document.getElementById("ManualSyncBody");
+                    syncReportBody.innerHTML = "Sync Failed: " + errStr;
+                }
+            });
+        }
+
+        function interruptSync() {
+            var request = {};
+            var obj = {};
+            request["type"] = 'interruptSync';
+            request["data"] = obj;
+            bridge.sendRequest(request, function(responseData) {
+                if (responseData.type === "interruptSyncResponse") {
+                    // success
+                    console.log('interruptSync: ' + stringify(responseData.data));
+
+                    disableSyncButton(false);
+                    disableInterruptButton(true);
+                    getSyncInfo();
+                } else {
+                    // error
+                    console.assert(responseData.type == 'error');
+                    const errStr = stringify(responseData.data);
+                    console.log('A problem occurred:\n' + errStr);
+
+                    disableSyncButton(true);
+                    disableInterruptButton(false);
+                }
+            });
+        }
+
+        function disableSyncButton(disable) {
+            let syncButton = document.getElementById("ManualSyncButton");
+            if (syncButton.disabled != disable) { syncButton.disabled = disable; }
+        }
+
+        function disableInterruptButton(disable) {
+            let interruptButton = document.getElementById("InterruptSyncButton");
+            if (interruptButton.disabled != disable) { interruptButton.disabled = disable; }
+        }
+
+    </script>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="panel-heading">
+            Platform Info<br/>
+        </div>
+        <div class="panel-body" id="PlatformInfoBody"></div>
+
+        <hr/>
+
+        <div class="panel-heading">
+            User Info<br/>
+        </div>
+        <div class="panel-body" id="UserInfoBody"></div>
+
+        <hr/>
+
+        <div class="panel-heading">
+            Sync Info<br/>
+        </div>
+        <div class="panel-body" id="SyncInfoBody">(No sync info)</div>
+
+        <hr/>
+
+        <div class="panel-heading">
+            Manual Sync Test<br/>
+            <button id="ManualSyncButton" class="btn btn-default" onclick="syncData();">Sync Now</button>
+            <button id="InterruptSyncButton" class="btn btn-danger" onclick="interruptSync();" disabled>Interrupt Sync</button>
+        </div>
+        <div class="panel-body" id="ManualSyncBody"></div>
+
+    </div>
+
+</body>
+</html>

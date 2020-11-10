@@ -3,7 +3,7 @@
 <head>
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
+
     <title>Pulsar JS Hello World</title>
 
     <script type="text/javascript">
@@ -74,7 +74,7 @@
              * Sets up JS Bridge without reinitializing.
              * @param {WebViewJavascriptBridge} _jsbridge the bridge
              * ***************************************************************/
-             _bridge.setup = function(_jsbridge) {
+            _bridge.setup = function(_jsbridge) {
                 jsbridge = _jsbridge;
             }
 
@@ -90,18 +90,31 @@
      * @param {string} variable name
      */
     function getQueryVariable(variable) {
-        const query = window.location.search.substring(1);
-        const vars = query.split("&");
-        for (var i = 0; i < vars.length; i++) {
-            const pair = vars[i].split("=");
-            if (pair[0] == variable) {
-                return pair[1];
-            }
-        }
+        const varDict = getQueryVariables();
+        return varDict[variable];
     }
 
     /**
-     * Helper function to pretty-print data as JSON 
+     * Helper function to extra all URL query variables into dict
+     * @returns {dict} Dictionary of query variables
+     */
+    function getQueryVariables() {
+        const query = window.location.search.substring(1);
+        const vars = query.split("&");
+        let varDict = {};
+        for (var i = 0; i < vars.length; i++) {
+            const pair = vars[i].split("=");
+            const key = pair[0];
+            const val = pair[1];
+            varDict[key] = val;
+        }
+        return varDict;
+    }
+
+    /**
+     * Helper function to pretty-print data as JSON
+     * @param {any} obj
+     * @returns {string} stringified object
      */
     function stringify(obj) {
         return JSON.stringify(obj, null, 4);
@@ -109,50 +122,55 @@
     </script>
 
 
-    <!-- 
-        Sample code that uses the Pulsar JS Bridge 
+    <!--
+        Sample code that uses the Pulsar JS Bridge
     -->
     <script type="text/javascript">
 
-        // variables set during startup
-        var docNode = 'window.document';
+        // example variables set during startup
         var platform = 'unknown';
-        var inFSL = false;
         var refObjectId = undefined;
 
         window.onload = function () {
-            if ((window.top !== window.self) && window.parent.pulsar) {
-                // Embedded in FSL
-                inFSL = true;
-                docNode = 'window.iFrame.contentWindow.document';
-                bridge.setup(window.parent.pulsar.bridge);
-                startApp();
-            }
-            else if (window.pulsar) {
-                // Likely called from another HTML
-                bridge.init(window.pulsar.bridge);
+            let inFSL = false;
+            let standAlone = false;
+            const runningEmbedded = (window.top !== window.self);
+
+            if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
+                window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
+                console.assert(window.pulsar.bridge !== undefined)
+                inFSL = (window.pulsar['displayContentDocument'] !== undefined); // FSL toplevel app sets additional methods you can use
+                bridge.setup(window.pulsar.bridge);
                 startApp();
             }
             else {
+                if (runningEmbedded) {
+                    console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
+                    throw 'embedded misconfiguration!';
+                }
+                standAlone = true;
+
                 // Launched stand-alone, startApp() on the bridge ready event
                 document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
                     bridge.init(event.bridge);
                     window.pulsar = {};
-                    pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
+                    window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
                     startApp();
                 }, false);
             }
+
+            console.assert(!(runningEmbedded && standAlone));
+            console.assert(runningEmbedded || standAlone);
+            console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
         };
 
         function startApp() {
             // if launched from a record, this is the object Id in question
             refObjectId = getQueryVariable('ref_id');
 
-            // what environment are we running on?
-            getPlatform();
-
-            // what user are we running on behalf of?
-            getUserInfo();
+            // print out any other variables
+            console.log('refObjectId: ' + refObjectId);
+            console.log('query variables' + stringify(getQueryVariables()));
 
             // populate inital sync status
             getSyncInfo();
@@ -193,54 +211,6 @@
 
             // register for global sync notifications
             registerSync();
-        }
-
-        function getPlatform() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'getPlatform';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('platformInfo: ' + stringify(responseData));
-
-                const userInfoBody = document.getElementById("PlatformInfoBody");
-
-                if (responseData.type === "getplatformResponse" || responseData.type === "platformResponse") {
-                    platformStr = 'Running on the ' + responseData.data + ' platform';
-                    if (refObjectId) {
-                        platformStr += ', launched from record: ' + refObjectId;
-                    }
-                    console.log(platformStr);
-                    userInfoBody.innerHTML = platformStr;
-                } else {
-                    console.assert(responseData.type == 'error');
-                    var errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    console.log('Couldnt get platform!');
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
-        }
-
-        function getUserInfo() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'userInfo';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('userInfo: ' + stringify(responseData));
-
-                const userInfoBody = document.getElementById("UserInfoBody");
-
-                if (responseData.type === "userInfoResponse") {
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                } else {
-                    console.assert(responseData.type == 'error');
-                    const errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
         }
 
         function getSyncInfo() {
@@ -344,20 +314,6 @@
 <body>
 
     <div class="container">
-
-        <div class="panel-heading">
-            Platform Info<br/>
-        </div>
-        <div class="panel-body" id="PlatformInfoBody"></div>
-
-        <hr/>
-
-        <div class="panel-heading">
-            User Info<br/>
-        </div>
-        <div class="panel-body" id="UserInfoBody"></div>
-
-        <hr/>
 
         <div class="panel-heading">
             Sync Info<br/>

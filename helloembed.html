@@ -3,7 +3,7 @@
 <head>
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
+
     <title>Pulsar JS Hello World</title>
 
     <script type="text/javascript">
@@ -74,7 +74,7 @@
              * Sets up JS Bridge without reinitializing.
              * @param {WebViewJavascriptBridge} _jsbridge the bridge
              * ***************************************************************/
-             _bridge.setup = function(_jsbridge) {
+            _bridge.setup = function(_jsbridge) {
                 jsbridge = _jsbridge;
             }
 
@@ -90,170 +90,189 @@
      * @param {string} variable name
      */
     function getQueryVariable(variable) {
-        const query = window.location.search.substring(1);
-        const vars = query.split("&");
-        for (var i = 0; i < vars.length; i++) {
-            const pair = vars[i].split("=");
-            if (pair[0] == variable) {
-                return pair[1];
-            }
-        }
+        const varDict = getQueryVariables();
+        return varDict[variable];
     }
 
     /**
-     * Helper function to pretty-print data as JSON 
+     * Helper function to extra all URL query variables into dict
+     * @returns {dict} Dictionary of query variables
+     */
+    function getQueryVariables() {
+        const query = window.location.search.substring(1);
+        const vars = query.split("&");
+        let varDict = {};
+        for (var i = 0; i < vars.length; i++) {
+            const pair = vars[i].split("=");
+            const key = pair[0];
+            const val = pair[1];
+            varDict[key] = val;
+        }
+        return varDict;
+    }
+
+    /**
+     * Helper function to pretty-print data as JSON
+     * @param {any} obj
+     * @returns {string} stringified object
      */
     function stringify(obj) {
         return JSON.stringify(obj, null, 4);
     }
+
+    /**
+     * Helper function to test if string is upper case
+     * @param {string} s
+     * @returns {boolean}
+     */
+    function isUpperCase(s) {
+        if (!isNaN(Number(s))) { return false; }
+        return s.toUpperCase() === s;
+    }
+
+    /**
+     * Helper function to (re-)convert a possible SF Id to full 18characters
+     * @param {string} sfId
+     * @returns {string} sfId or empty/null if not an SF Id
+     */
+    function convert15CharTo18CharId(sfId)
+    {
+        if (!sfId || sfId.length == 0) {
+            return null;
+        }
+        if (sfId.toLowerCase().indexOf('curium') == 0) {
+            // Assume this is a offline/local-generated Id ...
+            return sfId;
+        }
+        if (sfId.length == 18) {
+            // if we are sure this is really an SFDC Id, we could just return it here...
+            //return sfId;
+            sfId = sfId.substr(0, 15);
+        }
+        if (sfId.length != 15) {
+            return null;
+        }
+
+        let t1 = sfId.substr(0, 5);
+        let t2 = sfId.substr(5, 5);
+        let t3 = sfId.substr(10, 5);
+
+        var suffix = '';
+        let tripletList = [t1, t2, t3];
+
+        const binaryIdLookup = {
+            "00000": "A", "00001": "B", "00010": "C", "00011": "D", "00100": "E",
+            "00101": "F", "00110": "G", "00111": "H", "01000": "I", "01001": "J",
+            "01010": "K", "01011": "L", "01100": "M", "01101": "N", "01110": "O",
+            "01111": "P", "10000": "Q", "10001": "R", "10010": "S", "10011": "T",
+            "10100": "U", "10101": "V", "10110": "W", "10111": "X", "11000": "Y",
+            "11001": "Z", "11010": "0", "11011": "1", "11100": "2", "11101": "3",
+            "11110": "4", "11111": "5"
+        };
+
+        for (var i = 0; i < tripletList.length; i++) {
+            let triplet = tripletList[i];
+            var binaryId = '';
+            for (var j = triplet.length-1; j >= 0; j--) {
+                let aChar = triplet.charAt(j);
+                var binaryDigit = isUpperCase(aChar) ? "1" : "0";
+                binaryId += binaryDigit;
+            }
+            var charString = binaryIdLookup[binaryId];
+            suffix += charString;
+        }
+
+        return sfId + suffix;
+    }
     </script>
 
 
-    <!-- 
-        Sample code that uses the Pulsar JS Bridge 
+    <!--
+        Sample code that uses the Pulsar JS Bridge
     -->
     <script type="text/javascript">
 
-        // variables set during startup
-        var docNode = 'window.document';
+        // example variables set during startup
         var platform = 'unknown';
-        var inFSL = false;
         var refObjectId = undefined;
 
         window.onload = function () {
-            if ((window.top !== window.self) && window.parent.pulsar) {
-                // Embedded in FSL
-                inFSL = true;
-                docNode = 'window.iFrame.contentWindow.document';
-                bridge.setup(window.parent.pulsar.bridge);
-                startApp();
-            }
-            else if (window.pulsar) {
-                // Likely called from another HTML
-                bridge.init(window.pulsar.bridge);
+            let inFSL = false;
+            let standAlone = false;
+            const runningEmbedded = (window.top !== window.self);
+
+            if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
+                window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
+                console.assert(window.pulsar.bridge !== undefined)
+                inFSL = (window.pulsar['displayContentDocument'] !== undefined); // FSL toplevel app sets additional methods you can use
+                bridge.setup(window.pulsar.bridge);
                 startApp();
             }
             else {
+                if (runningEmbedded) {
+                    console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
+                    throw 'embedded misconfiguration!';
+                }
+                standAlone = true;
+
                 // Launched stand-alone, startApp() on the bridge ready event
                 document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
                     bridge.init(event.bridge);
                     window.pulsar = {};
-                    pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
+                    window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
                     startApp();
                 }, false);
             }
+
+            console.assert(!(runningEmbedded && standAlone));
+            console.assert(runningEmbedded || standAlone);
+            console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
         };
 
         function startApp() {
             // if launched from a record, this is the object Id in question
             refObjectId = getQueryVariable('ref_id');
 
-            // what environment are we running on?
-            getPlatform();
-
-            // what user are we running on behalf of?
-            getUserInfo();
-
-            // populate inital sync status
-            getSyncInfo();
-        }
-
-        function getPlatform() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'getPlatform';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('platformInfo: ' + stringify(responseData));
-
-                const userInfoBody = document.getElementById("PlatformInfoBody");
-
-                if (responseData.type === "getplatformResponse" || responseData.type === "platformResponse") {
-                    platformStr = 'Running on the ' + responseData.data + ' platform';
-                    if (refObjectId) {
-                        platformStr += ', launched from record: ' + refObjectId;
-                    }
-                    console.log(platformStr);
-                    userInfoBody.innerHTML = platformStr;
-                } else {
-                    console.assert(responseData.type == 'error');
-                    var errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    console.log('Couldnt get platform!');
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
-        }
-
-        function getUserInfo() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'userInfo';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('userInfo: ' + stringify(responseData));
-
-                const userInfoBody = document.getElementById("UserInfoBody");
-
-                if (responseData.type === "userInfoResponse") {
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                } else {
-                    console.assert(responseData.type == 'error');
-                    const errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
-        }
-
-        function getSyncInfo() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'syncInfo';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('syncInfo: ' + stringify(responseData));
-
-                const syncInfoBody = document.getElementById("SyncInfoBody");
-
-                if (responseData.type === "syncinfoResponse") {
-                    syncInfoBody.innerHTML = stringify(responseData.data);
-
-                } else {
-                    console.assert(responseData.type == 'error');
-                    const errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    syncInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
+            // print out any other variables
+            console.log('refObjectId: ' + refObjectId);
+            console.log('query variables' + stringify(getQueryVariables()));
         }
 
         function getContentUrl() {
             const inputField = document.getElementById("ContentId");
-            const docId = inputField.text;
-            const request = { 
+
+            const request = {
                 "type" : "getContentUrl",
-                "data" : { 
-                     "Id" : docId, // id of the content doc
-                } 
+                "data" : {}
             };
+
+            // we can query either on the Id or the Title ...
+            {
+                const docTitle = inputField.value;
+                const docId = convert15CharTo18CharId(docTitle);
+                if (docId && docId.length > 0) {
+                    request.data['Id'] = docId;
+                } else {
+                    request.data['Title'] = docTitle;
+                }
+            }
+
             bridge.sendRequest(request, function (responseData) {
-                console.log('Javascript got its response: ' + str(responseData));
                 if (responseData.type === "contentURLResponse")	{
                     const url = responseData.data.url;
-                    //var title = responseData.data.title;
+                    var title = responseData.data.title;
+
+                    console.log('Found document: ""' + title + '" -> ' + url);
 
                     const embedFrame = document.getElementById("EmbedFrame");
                     embedFrame.src = url;
                 } else {
                     console.assert(responseData.type == 'error');
-                    errStr = responseData.data;
                     const errStr = responseData.data;
-                    alert('A problem occurred:\n' + errStr);
+                    console.log('A problem occurred:\n' + errStr);
                 }
             });
         }
-
     </script>
 </head>
 
@@ -262,32 +281,11 @@
     <div class="container">
 
         <div class="panel-heading">
-            Platform Info<br/>
-        </div>
-        <div class="panel-body" id="PlatformInfoBody"></div>
-
-        <hr/>
-
-        <div class="panel-heading">
-            User Info<br/>
-        </div>
-        <div class="panel-body" id="UserInfoBody"></div>
-
-        <hr/>
-
-        <div class="panel-heading">
-            Sync Info<br/>
-        </div>
-        <div class="panel-body" id="SyncInfoBody">(No sync info)</div>
-
-        <hr/>
-
-        <div class="panel-heading">
             Embedding Test<br/>
-            <input id="ContentId" text="Specify Document Id here ..." />
-            <button id="InterruptSyncButton" class="btn btn-danger" onclick="getContentUrl();" disabled>Load content</button>
+            <input id="ContentId" text="Specify Document Id (or Title) here ..." />
+            <button id="LoadContentButton" class="btn btn-danger" onclick="getContentUrl();">Load embedded content</button>
         </div>
-        <iframe id="EmbedFrame" onload="console.log('IFRAME LOADED...');"></iframe>
+        <iframe width="800" height="200" id="EmbedFrame" onload="console.log('IFRAME LOADED...');"></iframe>
 
     </div>
 

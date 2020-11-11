@@ -47,13 +47,17 @@ Pulsar Developer REPL
 
 The process to upload changes to Salesforce, resync Pulsar to view them, and edit/repeat, is extremely time-consuming and error-prone.  Luckily, after you have the file(s) initially uploaded and displaying in Pulsar, you can switch to a quicker _local REPL experience (Read, Eval/Edit, Print, Loop)_...
 
-For quicker editing and debugging of your HTML/JS code please follow the instructions to set Pulsar to work with a [local development server](https://luminix.atlassian.net/wiki/spaces/PD/pages/831029249/Local+Development+Server).  NOTE: local development server is only recommended for test orgs, not production orgs!
+For quicker editing and debugging of your HTML/JS code you will need to set up a [local development server](https://luminix.atlassian.net/wiki/spaces/PD/pages/831029249/Local+Development+Server).  
+
+WARNING: running a local development server is only recommended for testing orgs, not orgs that are in production.  Caveat Programmer!
 
 ### `testserve.js`
 
-Once your org and Pulsar are configured correctly to work with a local development server, first try out the simplest one.  Running `node testserve.js` will serve the `hello.htm` file at http://127.0.0.1:3002.  (Note that if the _Node.js_ server fails to start, then you may need to install _Node.js_ on your development machine).
+Running `node testserve.js` will serve the `hello.html` file at http://127.0.0.1:3002.  (Note that if the _Node.js_ server fails to start, then you may need to install _Node.js_ on your development machine).
 
-From Pulsar, go back to the `hello.htm` document in the Content Library (Files) tab.  Pulsar will now connect to http://127.0.0.1:3002 when you next (re-)open the document.  To kick in the tires a bit, edit something in `hello.htm` and then restart the server.  From Pulsar refresh the page (or re-open the document), and you should see the change show up.
+Once Pulsar is configured correctly, (don't forget to toggle the "ENABLE DEVELOPMENT SERVER" switch on the advanced settings page), go back to the `hello.html` document in the Content Library (Files) tab.  Pulsar will now connect to http://127.0.0.1:3002 when you next (re-)open the document.
+
+At this point, you can locally change `hello.html`, and when you restart the server and/or refresh the page (or re-open the document) from Pulsar, you should see your changes show up.
 
 ### `testservedir.js`
 
@@ -61,7 +65,7 @@ This is a more complex example server that is designed to serve a toplevel `inde
 
 ### Third Party Tooling
 
-Now because you are now serving file(s) to Pulsar locally from your development machine, you can use all your favorite HTML/JS tools (Visual Studio Code, Edge DevTools, Chromium developer tools, etc) to edit and actually debug your code live running in Pulsar.
+Now because you are serving file(s) to Pulsar locally from your development machine, you can use all your favorite HTML/JS tools (Visual Studio Code, Edge DevTools, Chromium developer tools, etc) to edit and actually debug your code live running in Pulsar.
 
 Extra Resources
 ---------------

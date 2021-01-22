@@ -107,13 +107,14 @@
        * ******************************/
       const runningEmbedded = (window.top !== window.self);
       window.onload = function() {
-
+        var inFSL = false;
+        var standAlone = false;
         if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
           /* ************************************************************
-           * If the above is true, we are running in an embedded state
-           * within the Pulsar for FSL app. In this case, the above
-           * registered event listener will never fire as the webview we
-           * are running in already has established a Pulsar JS bridge.
+           * If the above is true, we are running in an embedded state.
+           * In this case, the above registered event listener will never
+           * fire as the webview we are running in already has
+           * established a Pulsar JS bridge.
            * ************************************************************/
           window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
           console.assert(window.pulsar.bridge !== undefined);
@@ -138,8 +139,12 @@
              * webview context. The Pulsar JS bridge will be established by
              * the event listener above. So we do nothing here.
              * ************************************************************/
+             standAlone = true;
           }
         }
+        console.assert(!(runningEmbedded && standAlone));
+        console.assert(runningEmbedded || standAlone);
+        console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
       };
       /* ******************************
        * END Pulsar onload definition

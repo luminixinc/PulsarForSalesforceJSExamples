@@ -116,10 +116,10 @@
 
       if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
         /* ************************************************************
-         * If the above is true, we are running in an embedded state
-         * within the Pulsar for FSL app. In this case, the above
-         * registered event listener will never fire as the webview we
-         * are running in already has established a Pulsar JS bridge.
+         * If the above is true, we are running in an embedded state.
+         * In this case, the above registered event listener will never
+         * fire as the webview we are running in already has
+         * established a Pulsar JS bridge.
          * ************************************************************/
         window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
         console.assert(window.pulsar.bridge !== undefined);

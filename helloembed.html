@@ -7,83 +7,151 @@
     <title>Pulsar JS Hello World</title>
 
     <script type="text/javascript">
+      /* *********************************
+       * Prepare for bridge initialization
+       * *********************************/
 
-    /* ******************************
-     * BEGIN Pulsar bridge definition
-     * ******************************/
+      /* Launched from an unembedded state, startApp() fires on the bridge ready event. */
+      document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
+        bridge.init(event.bridge);
 
-        var BRIDGE_ON = true; // set to false to test file in desktop browser
+        /* Note: If we are receiving this event, window.pulsar is undefined */
+        window.pulsar = {};
+        window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
 
-        var bridge = function() {
+        /* !!!! IMPORTANT !!!!
+         * The bridge has been initialized and your app is ready for launch.
+         * startApp() is any arbitrary method that a developer may define
+         * to start their application using the Pulsar JS bridge.
+         */
+        startApp();
+      }, false);
 
-            var jsbridge;
-            var _bridge = {};
+      /* ******************************
+       * BEGIN Pulsar bridge definition
+       * ******************************/
+      var BRIDGE_ON = true; // set to false to test file in desktop browser
 
-            /** **************************************************************
-             *  Sends a request (object containing type,
-             *  object, and data properties) across the JS Bridge,
-             *  and results are delivered to the callback function
-             *  @param {object} request data
-             *  @param {function} callback result function (called asynchronously)
-             * ***************************************************************/
-            _bridge.sendRequest = function(request, callbackFn) {
-                try {
-                    if (BRIDGE_ON) {
-                        jsbridge.send(request, callbackFn);
-                    } else {
-                        callbackFn({});
-                    }
-                } catch (err) {
-                    alert('Javascript-App bridge error: ' + err);
-                }
-            };
+      var bridge = function() {
 
-            /** **************************************************************
-             * Add a handler for a particular notification
-             * @param {string} handlerName name of notification
-             * @param {function} handlerFn function called for notification
-             * ***************************************************************/
-            _bridge.addHandler = function(handlerName, handlerFn) {
-                jsbridge.registerHandler(handlerName, handlerFn);
-            };
+        var jsbridge;
+        var _bridge = {};
 
-            /** **************************************************************
-             * Remove handler for a particular notification
-             * @param {string} handlerName name of notification
-             * ***************************************************************/
-            _bridge.removeHandler = function(handlerName) {
-                jsbridge.deregisterHandler(handlerName);
-            };
-
-            /** **************************************************************
-             * Initializes the JS Bridge.
-             * This should only be called once.
-             * @param {WebViewJavascriptBridge} _jsbridge the bridge
-             * ***************************************************************/
-            _bridge.init = function(_jsbridge) {
-                if (BRIDGE_ON) {
-                    _jsbridge.init(function(message, responseCallback) {
-                        console.log('Received message: ' + message);
-                    });
-
-                    jsbridge = _jsbridge;
-                }
-            };
-
-            /** **************************************************************
-             * Sets up JS Bridge without reinitializing.
-             * @param {WebViewJavascriptBridge} _jsbridge the bridge
-             * ***************************************************************/
-            _bridge.setup = function(_jsbridge) {
-                jsbridge = _jsbridge;
+        /** **************************************************************
+         *  Sends a request (object containing type,
+         *  object, and data properties) across the JS Bridge,
+         *  and results are delivered to the callback function
+         *  @param {object} request data
+         *  @param {function} callback result function (called asynchronously)
+         * ***************************************************************/
+        _bridge.sendRequest = function(request, callbackFn) {
+          try {
+            if (BRIDGE_ON) {
+              jsbridge.send(request, callbackFn);
+            } else {
+              callbackFn({});
             }
+          } catch (err) {
+            alert('Javascript-App bridge error: ' + err);
+          }
+        };
 
-            return _bridge;
-        }();
+        /** **************************************************************
+         * Add a handler for a particular notification
+         * @param {string} handlerName name of notification
+         * @param {function} handlerFn function called for notification
+         * ***************************************************************/
+        _bridge.addHandler = function(handlerName, handlerFn) {
+          jsbridge.registerHandler(handlerName, handlerFn);
+        };
 
-    /* ******************************
-     *  END Pulsar bridge definition
-     * ******************************/
+        /** **************************************************************
+         * Remove handler for a particular notification
+         * @param {string} handlerName name of notification
+         * ***************************************************************/
+        _bridge.removeHandler = function(handlerName) {
+          jsbridge.deregisterHandler(handlerName);
+        };
+
+        /** **************************************************************
+         * Initializes the JS Bridge.
+         * This should only be called once.
+         * @param {WebViewJavascriptBridge} _jsbridge the bridge
+         * ***************************************************************/
+        _bridge.init = function(_jsbridge) {
+          if (BRIDGE_ON) {
+            _jsbridge.init(function(message, responseCallback) {
+              console.log('Received message: ' + message);
+            });
+
+            jsbridge = _jsbridge;
+          }
+        };
+
+        /** **************************************************************
+         * Sets up JS Bridge without reinitializing.
+         * @param {WebViewJavascriptBridge} _jsbridge the bridge
+         * ***************************************************************/
+        _bridge.setup = function(_jsbridge) {
+          jsbridge = _jsbridge;
+        }
+
+        return _bridge;
+      }();
+      /* ******************************
+       *  END Pulsar bridge definition
+       * ******************************/
+
+      /* ******************************
+       * BEGIN Pulsar onload definition
+       * ******************************/
+      const runningEmbedded = (window.top !== window.self);
+      window.onload = function() {
+        var inFSL = false;
+        var standAlone = false;
+        if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
+          /* ************************************************************
+           * If the above is true, we are running in an embedded state.
+           * In this case, the above registered event listener will never
+           * fire as the webview we are running in already has
+           * established a Pulsar JS bridge.
+           * ************************************************************/
+          window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
+          console.assert(window.pulsar.bridge !== undefined);
+          bridge.setup(window.pulsar.bridge);
+
+          /* At this point we have the correct Pulsar JS Bridge object from the window itself.
+           * Start your app! */
+          startApp();
+
+        } else {
+          if (runningEmbedded) {
+            /* ************************************************************
+             * Something has gone wrong if we are running embedded and find
+             * ourselves without a window.parent.pulsar.bridge or
+             * window.parent.pulsar object.
+             * ************************************************************/
+            console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
+            throw 'embedded misconfiguration!';
+          } else {
+            /* ************************************************************
+             * Otherwise we are running in a stand-alone state in our own
+             * webview context. The Pulsar JS bridge will be established by
+             * the event listener above. So we do nothing here.
+             * ************************************************************/
+             standAlone = true;
+          }
+        }
+        console.assert(!(runningEmbedded && standAlone));
+        console.assert(runningEmbedded || standAlone);
+        console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
+      };
+      /* ******************************
+       * END Pulsar onload definition
+       * ******************************/
+    </script>
+
+    <script type="text/javascript">
 
     /**
      * Helper function to extract URL query variables
@@ -195,39 +263,6 @@
         // example variables set during startup
         var platform = 'unknown';
         var refObjectId = undefined;
-
-        window.onload = function () {
-            let inFSL = false;
-            let standAlone = false;
-            const runningEmbedded = (window.top !== window.self);
-
-            if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
-                window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
-                console.assert(window.pulsar.bridge !== undefined)
-                inFSL = (window.pulsar['displayContentDocument'] !== undefined); // FSL toplevel app sets additional methods you can use
-                bridge.setup(window.pulsar.bridge);
-                startApp();
-            }
-            else {
-                if (runningEmbedded) {
-                    console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
-                    throw 'embedded misconfiguration!';
-                }
-                standAlone = true;
-
-                // Launched stand-alone, startApp() on the bridge ready event
-                document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
-                    bridge.init(event.bridge);
-                    window.pulsar = {};
-                    window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
-                    startApp();
-                }, false);
-            }
-
-            console.assert(!(runningEmbedded && standAlone));
-            console.assert(runningEmbedded || standAlone);
-            console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
-        };
 
         function startApp() {
             // if launched from a record, this is the object Id in question

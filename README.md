@@ -21,6 +21,10 @@ Pulsar Javascript API Examples
 
 This repository contains canonical example code of the HTML/CSS/Javascript interaction with the Pulsar App.
 
+### `pulsar-js-bridge.html`
+
+This file contains a minimal example that demonstrates how to setup the Pulsar JS bridge from within any context in the Pulsar App. There are two <script> blocks in the header. The first contains all the code required to prepare the bridge for your application. The second is a minimal example of how to start an application. The connecting bit of code between these two in this particular case is the function startApp(). This is defined in second <script> block, and called in the first. You can rename this function, but make sure that you modify the function calls in the first block of code to reflect any naming changes.
+
 ### `hello.html`
 
 A simple, self-contained, "hello world" example that exercises the Pulsar Javascript API.  Performs some simple queries and prints out the results.

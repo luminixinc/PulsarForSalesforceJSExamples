@@ -1,179 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Pulsar JS Hello World</title>
+  <title>Pulsar JS Hello World</title>
 
-    <script type="text/javascript">
-      /* *********************************
-       * Prepare for bridge initialization
-       * *********************************/
+  <!-- ----------------------------------------------------------------
+  - The following script element contains the required code to setup
+  - the Pulsar JS Bridge from any valid context. Implement your own
+  - startPulsarApp method in another script
+  - ------------------------------------------------------------------>
+  <script type="text/javascript">
+    /* ******************************
+     * BEGIN Pulsar bridge boilerplate
+     * ******************************/
+    var BRIDGE_ON = true; // set to false to test file in desktop browser
 
-      /* Launched from an unembedded state, startApp() fires on the bridge ready event. */
-      document.addEventListener('WebViewJavascriptBridgeReady', function(event) {
-        bridge.init(event.bridge);
+    var bridge = function() {
 
-        /* Note: If we are receiving this event, window.pulsar is undefined */
-        window.pulsar = {};
-        window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
+      var jsbridge;
+      var _bridge = {};
 
-        /* !!!! IMPORTANT !!!!
-         * The bridge has been initialized and your app is ready for launch.
-         * startApp() is any arbitrary method that a developer may define
-         * to start their application using the Pulsar JS bridge.
-         */
-        startApp();
-      }, false);
-
-      /* ******************************
-       * BEGIN Pulsar bridge definition
-       * ******************************/
-      var BRIDGE_ON = true; // set to false to test file in desktop browser
-
-      var bridge = function() {
-
-        var jsbridge;
-        var _bridge = {};
-
-        /** **************************************************************
-         *  Sends a request (object containing type,
-         *  object, and data properties) across the JS Bridge,
-         *  and results are delivered to the callback function
-         *  @param {object} request data
-         *  @param {function} callback result function (called asynchronously)
-         * ***************************************************************/
-        _bridge.sendRequest = function(request, callbackFn) {
-          try {
-            if (BRIDGE_ON) {
-              jsbridge.send(request, callbackFn);
-            } else {
-              callbackFn({});
-            }
-          } catch (err) {
-            alert('Javascript-App bridge error: ' + err);
-          }
-        };
-
-        /** **************************************************************
-         * Add a handler for a particular notification
-         * @param {string} handlerName name of notification
-         * @param {function} handlerFn function called for notification
-         * ***************************************************************/
-        _bridge.addHandler = function(handlerName, handlerFn) {
-          jsbridge.registerHandler(handlerName, handlerFn);
-        };
-
-        /** **************************************************************
-         * Remove handler for a particular notification
-         * @param {string} handlerName name of notification
-         * ***************************************************************/
-        _bridge.removeHandler = function(handlerName) {
-          jsbridge.deregisterHandler(handlerName);
-        };
-
-        /** **************************************************************
-         * Initializes the JS Bridge.
-         * This should only be called once.
-         * @param {WebViewJavascriptBridge} _jsbridge the bridge
-         * ***************************************************************/
-        _bridge.init = function(_jsbridge) {
+      /** **************************************************************
+       *  Sends a request (object containing type,
+       *  object, and data properties) across the JS Bridge,
+       *  and results are delivered to the callback function
+       *  @param {object} request data
+       *  @param {function} callback result function (called asynchronously)
+       * ***************************************************************/
+      _bridge.sendRequest = function(request, callbackFn) {
+        try {
           if (BRIDGE_ON) {
-            _jsbridge.init(function(message, responseCallback) {
-              console.log('Received message: ' + message);
-            });
-
-            jsbridge = _jsbridge;
+            jsbridge.send(request, callbackFn);
+          } else {
+            callbackFn({});
           }
-        };
+        } catch (err) {
+          alert('Javascript-App bridge error: ' + err);
+        }
+      };
 
-        /** **************************************************************
-         * Sets up JS Bridge without reinitializing.
-         * @param {WebViewJavascriptBridge} _jsbridge the bridge
-         * ***************************************************************/
-        _bridge.setup = function(_jsbridge) {
+      /** **************************************************************
+       * Add a handler for a particular notification
+       * @param {string} handlerName name of notification
+       * @param {function} handlerFn function called for notification
+       * ***************************************************************/
+      _bridge.addHandler = function(handlerName, handlerFn) {
+        jsbridge.registerHandler(handlerName, handlerFn);
+      };
+
+      /** **************************************************************
+       * Remove handler for a particular notification
+       * @param {string} handlerName name of notification
+       * ***************************************************************/
+      _bridge.removeHandler = function(handlerName) {
+        jsbridge.deregisterHandler(handlerName);
+      };
+
+      /** **************************************************************
+       * Initializes the JS Bridge.
+       * This should only be called once.
+       * @param {WebViewJavascriptBridge} _jsbridge the bridge
+       * ***************************************************************/
+      _bridge.init = function(_jsbridge) {
+        if (BRIDGE_ON) {
+          _jsbridge.init(function(message, responseCallback) {
+            console.log('Received message: ' + message);
+          });
+
           jsbridge = _jsbridge;
         }
-
-        return _bridge;
-      }();
-      /* ******************************
-       *  END Pulsar bridge definition
-       * ******************************/
-
-      /* ******************************
-       * BEGIN Pulsar onload definition
-       * ******************************/
-      const runningEmbedded = (window.top !== window.self);
-      window.onload = function() {
-        var inFSL = false;
-        var standAlone = false;
-        if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
-          /* ************************************************************
-           * If the above is true, we are running in an embedded state.
-           * In this case, the above registered event listener will never
-           * fire as the webview we are running in already has
-           * established a Pulsar JS bridge.
-           * ************************************************************/
-          window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
-          console.assert(window.pulsar.bridge !== undefined);
-          bridge.setup(window.pulsar.bridge);
-
-          /* At this point we have the correct Pulsar JS Bridge object from the window itself.
-           * Start your app! */
-          startApp();
-
-        } else {
-          if (runningEmbedded) {
-            /* ************************************************************
-             * Something has gone wrong if we are running embedded and find
-             * ourselves without a window.parent.pulsar.bridge or
-             * window.parent.pulsar object.
-             * ************************************************************/
-            console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
-            throw 'embedded misconfiguration!';
-          } else {
-            /* ************************************************************
-             * Otherwise we are running in a stand-alone state in our own
-             * webview context. The Pulsar JS bridge will be established by
-             * the event listener above. So we do nothing here.
-             * ************************************************************/
-             standAlone = true;
-          }
-        }
-        console.assert(!(runningEmbedded && standAlone));
-        console.assert(runningEmbedded || standAlone);
-        console.log('Starting App' + (runningEmbedded ? ' embedded' : '') + (inFSL ? ' in FSL' : '') + (standAlone ? ' stand alone' : ''));
       };
-      /* ******************************
-       * END Pulsar onload definition
-       * ******************************/
-    </script>
 
-    <script type="text/javascript">
+      /** **************************************************************
+       * Sets up JS Bridge without reinitializing.
+       * @param {WebViewJavascriptBridge} _jsbridge the bridge
+       * ***************************************************************/
+      _bridge.setup = function(_jsbridge) {
+        jsbridge = _jsbridge;
+      }
 
-    /**
-     * Helper function to determine whether we are in an FSL or stand-alone
-     * context.
-     **/
-    function getApplicationStatus() {
+      return _bridge;
+    }();
+    /* ******************************
+     * END Pulsar bridge boilerplate
+     * ******************************/
 
+    /* ******************************
+     * BEGIN Pulsar bootstrap boilerplate
+     * ******************************/
+
+    const runningEmbedded = (window.top !== window.self); // are we running embedded in an iframe?
+    const runningStandAlone = !runningEmbedded;           // are we running in a stand-alone state in our own webview context?
+    var runningEmbeddedInFSL = false;                     // are we running embedded in an iframe within Pulsar for FSL context?
+    var refObjectId = undefined;                          // if launched from a record, this is the object Id in question
+
+    /* ************************************************************************
+     * This is the entry point when running your app stand-alone (directly from
+     * Pulsar, not embedded in an iframe).
+     * ************************************************************************/
+    document.addEventListener('WebViewJavascriptBridgeReady', standAloneBootstrap, false);
+
+    function standAloneBootstrap(event) {
+      bridge.init(event.bridge);
+
+      // if we are receiving this event, window.pulsar should be undefined
+      console.assert(window.pulsar === undefined);
+      window.pulsar = {};
+      window.pulsar.bridge = event.bridge; // save initial bridge (for propagation to other pages)
+
+      commonBootstrap();
+    }
+
+    /* ************************************************************************
+     * This is the entry point when running your app embedded in another web
+     * view in Pulsar.
+     * ************************************************************************/
+    window.onload = embeddedBootstrap;
+
+    function embeddedBootstrap() {
       if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
+        window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
+        bridge.setup(window.pulsar.bridge); // ensure we are setup properly for this embedded context
+
         // FSL toplevel app sets additional methods you can use
-        inFSL = (window.pulsar['displayContentDocument'] !== undefined);
+        runningEmbeddedInFSL = (window.pulsar['displayContentDocument'] !== undefined);
+
+        commonBootstrap();
       } else {
-        standAlone = true;
+        if (runningEmbedded) {
+          /* ************************************************************
+           * Something has gone wrong if we are running embedded and find
+           * ourselves without window.parent.pulsar.bridge or
+           * window.parent.pulsar objects.
+           * ************************************************************/
+          console.log('OOPS, running embedded, but no window.parent.pulsar.bridge!');
+          throw 'embedded misconfiguration!';
+        } else {
+          /* ************************************************************
+           * 2021/02/04 NOTE: on iOS platform, windows.onload is called
+           * after `WebViewJavascriptBridgeReady` is sent, but on Windows
+           * and Android it is called before. So, because we may not have
+           * the initial bridge setup at this point, do nothing here.
+           * ************************************************************/
+          console.assert(runningStandAlone);
+        }
       }
     }
 
+    /* ************************************************************************
+     * This is the common secondary-stage bootstrap where we perform sanity-
+     * checks and basic logging before launching your custom code.
+     * ************************************************************************/
+    function commonBootstrap() {
+
+      /* ************************************************************
+       * At this point we should have the Pulsar JS Bridge either from
+       * `WebViewJavascriptBridgeReady` event (stand-alone) or via the
+       * parent context (running embedded).
+       * ************************************************************/
+      console.assert(window.pulsar.bridge !== undefined);
+      console.assert(!(runningEmbedded && runningStandAlone));
+      console.assert(runningEmbedded || runningStandAlone);
+
+      refObjectId = getQueryVariable('ref_id');
+
+      // log the launch context
+      console.log('Starting Custom Pulsar App' + (runningEmbedded ? ' embedded' : '') + (runningEmbeddedInFSL ? ' in FSL' : '') + (runningStandAlone ? ' stand alone' : '') + (refObjectId ? ' launched from record: ' + refObjectId : ''));
+
+      // log any query variables
+      console.log('query variables ' + stringify(getQueryVariables()));
+
+      /* !!!! IMPORTANT !!!!
+       * The bridge has been initialized and your app is ready for launch.
+       * startPulsarApp() is any arbitrary method that a developer may (re-)define
+       * to start their application using the Pulsar JS bridge.
+       */
+      startPulsarApp();
+    };
+
+    /* ******************************
+     * END Pulsar bootstrap boilerplate
+     * ******************************/
+  </script>
+
+
+  <!-- ----------------------------------------------------------------
+  - The following script element contains generic helper methods.
+  - ------------------------------------------------------------------>
+  <script type="text/javascript">
     /**
      * Helper function to extract URL query variables
      * @param {string} variable name
      */
     function getQueryVariable(variable) {
-        const varDict = getQueryVariables();
-        return varDict[variable];
+      const varDict = getQueryVariables();
+      return varDict[variable];
     }
 
     /**
@@ -181,16 +204,16 @@
      * @returns {dict} Dictionary of query variables
      */
     function getQueryVariables() {
-        const query = window.location.search.substring(1);
-        const vars = query.split("&");
-        let varDict = {};
-        for (var i = 0; i < vars.length; i++) {
-            const pair = vars[i].split("=");
-            const key = pair[0];
-            const val = pair[1];
-            varDict[key] = val;
-        }
-        return varDict;
+      const query = window.location.search.substring(1);
+      const vars = query.split("&");
+      let varDict = {};
+      for (var i = 0; i < vars.length; i++) {
+        const pair = vars[i].split("=");
+        const key = pair[0];
+        const val = pair[1];
+        varDict[key] = val;
+      }
+      return varDict;
     }
 
     /**
@@ -199,141 +222,143 @@
      * @returns {string} stringified object
      */
     function stringify(obj) {
-        return JSON.stringify(obj, null, 4);
+      return JSON.stringify(obj, null, 4);
     }
-    </script>
+  </script>
 
 
-    <!--
-        Sample code that uses the Pulsar JS Bridge
-    -->
-    <script type="text/javascript">
+  <!-- ----------------------------------------------------------------
+  - The following script element contains example code that a developer
+  - might write.
+  - ------------------------------------------------------------------>
+  <script type="text/javascript">
 
-        // example variables set during startup
-        var platform = 'unknown';
-        var refObjectId = undefined;
+    /* !!!! IMPORTANT !!!!
+     * Here we define a custom starting point for the app. This function is
+     * called above once we are certain that we have established a functional
+     * Pulsar JS Bridge.
+     */
+    function startPulsarApp() {
 
-        function startApp() {
+      // what environment are we running on?
+      getPlatform();
 
-            getApplicationStatus();
+      // what user are we running on behalf of?
+      getUserInfo();
 
-            // if launched from a record, this is the object Id in question
-            refObjectId = getQueryVariable('ref_id');
+      // populate inital sync status
+      getSyncInfo();
 
-            // print out any other variables
-            console.log('refObjectId: ' + refObjectId);
-            console.log('query variables' + stringify(getQueryVariables()));
+      // this duplicates the console log from the bootstrap boilerplate above
+      const messageString = 'Started Custom Pulsar App' + (runningEmbedded ? ' embedded' : '') + (runningEmbeddedInFSL ? ' in FSL' : '') + (runningStandAlone ? ' stand alone' : '') + (refObjectId ? ' launched from record: ' + refObjectId : '');
 
-            // what environment are we running on?
-            getPlatform();
+      const textElement = document.getElementById("AppStatus");
+      textElement.innerHTML = messageString;
+    }
 
-            // what user are we running on behalf of?
-            getUserInfo();
+    function getPlatform() {
+      var request = {};
+      var obj = {};
+      request["type"] = 'getPlatform';
+      request["data"] = obj;
+      bridge.sendRequest(request, function(responseData) {
+        console.log('platformInfo: ' + stringify(responseData));
 
-            // populate inital sync status
-            getSyncInfo();
+        const userInfoBody = document.getElementById("PlatformInfoBody");
+
+        if (responseData.type === "getplatformResponse" || responseData.type === "platformResponse") {
+          var platform = responseData.data;
+          platformStr = 'Running on the ' + platform + ' platform';
+          if (refObjectId) {
+            platformStr += ', launched from record: ' + refObjectId;
+          }
+          console.log(platformStr);
+          userInfoBody.innerHTML = platformStr;
+        } else {
+          console.assert(responseData.type == 'error');
+          var errStr = responseData.data;
+          console.log('A problem occurred:\n' + errStr);
+          console.log('Couldnt get platform!');
+          userInfoBody.innerHTML = stringify(responseData.data);
         }
+      });
+    }
 
-        function getPlatform() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'getPlatform';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('platformInfo: ' + stringify(responseData));
+    function getUserInfo() {
+      var request = {};
+      var obj = {};
+      request["type"] = 'userInfo';
+      request["data"] = obj;
+      bridge.sendRequest(request, function(responseData) {
+        console.log('userInfo: ' + stringify(responseData));
 
-                const userInfoBody = document.getElementById("PlatformInfoBody");
+        const userInfoBody = document.getElementById("UserInfoBody");
 
-                if (responseData.type === "getplatformResponse" || responseData.type === "platformResponse") {
-                    platform = responseData.data;
-                    platformStr = 'Running on the ' + platform + ' platform';
-                    if (refObjectId) {
-                        platformStr += ', launched from record: ' + refObjectId;
-                    }
-                    console.log(platformStr);
-                    userInfoBody.innerHTML = platformStr;
-                } else {
-                    console.assert(responseData.type == 'error');
-                    var errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    console.log('Couldnt get platform!');
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
+        if (responseData.type === "userInfoResponse") {
+          userInfoBody.innerHTML = stringify(responseData.data);
+        } else {
+          console.assert(responseData.type == 'error');
+          const errStr = responseData.data;
+          console.log('A problem occurred:\n' + errStr);
+          userInfoBody.innerHTML = stringify(responseData.data);
         }
+      });
+    }
 
-        function getUserInfo() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'userInfo';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('userInfo: ' + stringify(responseData));
+    function getSyncInfo() {
+      var request = {};
+      var obj = {};
+      request["type"] = 'syncInfo';
+      request["data"] = obj;
+      bridge.sendRequest(request, function(responseData) {
+        console.log('syncInfo: ' + stringify(responseData));
 
-                const userInfoBody = document.getElementById("UserInfoBody");
+        const syncInfoBody = document.getElementById("SyncInfoBody");
 
-                if (responseData.type === "userInfoResponse") {
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                } else {
-                    console.assert(responseData.type == 'error');
-                    const errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    userInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
+        if (responseData.type === "syncinfoResponse") {
+          syncInfoBody.innerHTML = stringify(responseData.data);
+        } else {
+          console.assert(responseData.type == 'error');
+          const errStr = responseData.data;
+          console.log('A problem occurred:\n' + errStr);
+          syncInfoBody.innerHTML = stringify(responseData.data);
         }
-
-        function getSyncInfo() {
-            var request = {};
-            var obj = {};
-            request["type"] = 'syncInfo';
-            request["data"] = obj;
-            bridge.sendRequest(request, function(responseData) {
-                console.log('syncInfo: ' + stringify(responseData));
-
-                const syncInfoBody = document.getElementById("SyncInfoBody");
-
-                if (responseData.type === "syncinfoResponse") {
-                    syncInfoBody.innerHTML = stringify(responseData.data);
-
-                } else {
-                    console.assert(responseData.type == 'error');
-                    const errStr = responseData.data;
-                    console.log('A problem occurred:\n' + errStr);
-                    syncInfoBody.innerHTML = stringify(responseData.data);
-                }
-            });
-        }
-
-    </script>
+      });
+    }
+  </script>
 </head>
 
 <body>
+  <div class="container">
 
-    <div class="container">
+      <div class="panel-heading">
+        App Status<br/>
+      </div>
+      <div class="panel-body" id="AppStatus">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin accumsan velit ligula, vitae vestibulum orci ultricies in. Quisque pharetra ante ante. Pellentesque velit velit, pellentesque non sapien ut, varius auctor lorem. Quisque sagittis elit et magna suscipit commodo. Quisque pharetra, eros eu eleifend aliquam, mi lectus tincidunt mi, nec ultrices orci massa gravida mi. Fusce nec semper nisl. Nulla finibus sit amet felis eu condimentum. Integer turpis ipsum, elementum eget rutrum a, efficitur eu turpis. Mauris arcu turpis, lacinia ac mi pharetra, posuere feugiat risus. Morbi ligula leo, luctus nec ullamcorper quis, tempor nec mi. Nunc libero leo, posuere tristique vulputate sed, consequat vel mauris. Vestibulum consequat risus mi, non porta justo sagittis sit amet. Sed a ultrices eros. Etiam accumsan justo eros, vel blandit magna facilisis sed.</div>
 
-        <div class="panel-heading">
-            Platform Info<br/>
-        </div>
-        <div class="panel-body" id="PlatformInfoBody">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin accumsan velit ligula, vitae vestibulum orci ultricies in. Quisque pharetra ante ante. Pellentesque velit velit, pellentesque non sapien ut, varius auctor lorem. Quisque sagittis elit et magna suscipit commodo. Quisque pharetra, eros eu eleifend aliquam, mi lectus tincidunt mi, nec ultrices orci massa gravida mi. Fusce nec semper nisl. Nulla finibus sit amet felis eu condimentum. Integer turpis ipsum, elementum eget rutrum a, efficitur eu turpis. Mauris arcu turpis, lacinia ac mi pharetra, posuere feugiat risus. Morbi ligula leo, luctus nec ullamcorper quis, tempor nec mi. Nunc libero leo, posuere tristique vulputate sed, consequat vel mauris. Vestibulum consequat risus mi, non porta justo sagittis sit amet. Sed a ultrices eros. Etiam accumsan justo eros, vel blandit magna facilisis sed.</div>
+      <hr/>
 
-        <hr/>
+      <div class="panel-heading">
+        Platform Info<br/>
+      </div>
+      <div class="panel-body" id="PlatformInfoBody">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin accumsan velit ligula, vitae vestibulum orci ultricies in. Quisque pharetra ante ante. Pellentesque velit velit, pellentesque non sapien ut, varius auctor lorem. Quisque sagittis elit et magna suscipit commodo. Quisque pharetra, eros eu eleifend aliquam, mi lectus tincidunt mi, nec ultrices orci massa gravida mi. Fusce nec semper nisl. Nulla finibus sit amet felis eu condimentum. Integer turpis ipsum, elementum eget rutrum a, efficitur eu turpis. Mauris arcu turpis, lacinia ac mi pharetra, posuere feugiat risus. Morbi ligula leo, luctus nec ullamcorper quis, tempor nec mi. Nunc libero leo, posuere tristique vulputate sed, consequat vel mauris. Vestibulum consequat risus mi, non porta justo sagittis sit amet. Sed a ultrices eros. Etiam accumsan justo eros, vel blandit magna facilisis sed.</div>
 
-        <div class="panel-heading">
-            User Info<br/>
-        </div>
-        <div class="panel-body" id="UserInfoBody">Nam condimentum metus a cursus pharetra. Cras posuere libero mi, id tempus leo ullamcorper ut. Curabitur sed dui vel urna pulvinar semper. Sed rutrum elementum mauris fermentum fermentum. Aenean gravida dictum nunc, sit amet euismod dolor maximus nec. Vestibulum a enim purus. In condimentum mauris sit amet lectus efficitur placerat. Sed sem massa, convallis a sem sit amet, interdum placerat elit. Sed vel lorem ligula. Sed imperdiet ligula elit, in tincidunt leo pellentesque vel. Cras at augue justo. Morbi feugiat commodo ex a lacinia.</div>
+      <hr/>
 
-        <hr/>
+      <div class="panel-heading">
+        User Info<br/>
+      </div>
+      <div class="panel-body" id="UserInfoBody">Nam condimentum metus a cursus pharetra. Cras posuere libero mi, id tempus leo ullamcorper ut. Curabitur sed dui vel urna pulvinar semper. Sed rutrum elementum mauris fermentum fermentum. Aenean gravida dictum nunc, sit amet euismod dolor maximus nec. Vestibulum a enim purus. In condimentum mauris sit amet lectus efficitur placerat. Sed sem massa, convallis a sem sit amet, interdum placerat elit. Sed vel lorem ligula. Sed imperdiet ligula elit, in tincidunt leo pellentesque vel. Cras at augue justo. Morbi feugiat commodo ex a lacinia.</div>
 
-        <div class="panel-heading">
-            Sync Info<br/>
-        </div>
-        <div class="panel-body" id="SyncInfoBody">Suspendisse nec mauris lobortis, sollicitudin mi eget, cursus metus. Donec aliquet pharetra dolor. Phasellus varius, tellus eu suscipit auctor, lacus ipsum lacinia leo, ut faucibus diam eros vel libero. Etiam ultrices vulputate auctor. Maecenas consectetur sagittis ligula a sodales. Proin ut dapibus lectus. Cras fringilla tempus ante, quis sollicitudin mi. Nulla id tellus a nisl sagittis feugiat sollicitudin non augue. Morbi pellentesque vehicula eros nec mattis. Nulla ultricies, dui et convallis feugiat, arcu lacus aliquet lorem, sed fringilla sapien tellus quis orci. Donec in sollicitudin lectus, a dapibus odio. Nam justo mauris, bibendum sed suscipit a, porta lacinia risus. Mauris sapien dolor, fringilla vitae condimentum sit amet, laoreet eu dolor. Duis porta at eros nec rhoncus. Integer iaculis erat vel neque tincidunt, a lobortis dolor congue.</div>
+      <hr/>
 
-        <hr/>
+      <div class="panel-heading">
+        Sync Info<br/>
+      </div>
+      <div class="panel-body" id="SyncInfoBody">Suspendisse nec mauris lobortis, sollicitudin mi eget, cursus metus. Donec aliquet pharetra dolor. Phasellus varius, tellus eu suscipit auctor, lacus ipsum lacinia leo, ut faucibus diam eros vel libero. Etiam ultrices vulputate auctor. Maecenas consectetur sagittis ligula a sodales. Proin ut dapibus lectus. Cras fringilla tempus ante, quis sollicitudin mi. Nulla id tellus a nisl sagittis feugiat sollicitudin non augue. Morbi pellentesque vehicula eros nec mattis. Nulla ultricies, dui et convallis feugiat, arcu lacus aliquet lorem, sed fringilla sapien tellus quis orci. Donec in sollicitudin lectus, a dapibus odio. Nam justo mauris, bibendum sed suscipit a, porta lacinia risus. Mauris sapien dolor, fringilla vitae condimentum sit amet, laoreet eu dolor. Duis porta at eros nec rhoncus. Integer iaculis erat vel neque tincidunt, a lobortis dolor congue.</div>
 
-    </div>
+      <hr/>
 
+  </div>
 </body>
 </html>

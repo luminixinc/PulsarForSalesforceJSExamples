@@ -13,17 +13,13 @@ Pulsar for Salesforce Features
 - Allows complete Create Read Update Delete (CRUD) of object records, including child and related records, all while completely offline, subject to Salesforce permissions and access controls you are already familiar with.
 - Also supports offline access to files and documents, roll-up summary fields, formula fields, validation rules, flows and quick actions, all while completely offline, and subject to Salesforce permissions.
 - If you "know" Salesforce, then working with Pulsar as an admin or developer is simply easy!
-- Pulsar App is available for iOS, Android and Chromebooks, and Windows 10.  Download, and start syncing your organization!  For premium use, which allows full customization, contact Sales at [Luminix, Inc](https://www.luminixinc.com).
+- Pulsar is available for iOS, Android and Chromebooks, and Windows 10.  Download, and start syncing your organization!  For premium use, which allows full customization, contact Sales at [Luminix, Inc](https://www.luminixinc.com).
 - And... you can completely customize the UI by writing HTML/CSS/Javascript apps for embedding in Pulsar, (which is what the remainder of this document is about ;)
 
 Pulsar Javascript API Examples
 ------------------------------
 
-This repository contains canonical example code of the HTML/CSS/Javascript interaction with the Pulsar App.
-
-### `pulsar-js-bridge.html`
-
-This file contains a minimal example that demonstrates how to setup the Pulsar JS bridge from within any context in the Pulsar App. There are two <script> blocks in the header. The first contains all the code required to prepare the bridge for your application. The second is a minimal example of how to start an application. The connecting bit of code between these two in this particular case is the function startApp(). This is defined in second <script> block, and called in the first. You can rename this function, but make sure that you modify the function calls in the first block of code to reflect any naming changes.
+This repository contains canonical example code of how to interact with the Pulsar platform from a custom embedded HTML/CSS/Javascript app.
 
 ### `hello.html`
 
@@ -43,7 +39,7 @@ Running the Examples in Pulsar
 To view these examples in Pulsar:
 
 - Upload the HTML file(s) to Salesforce, specifically upload them into your org's Content Library (or Files section)
-- Launch Pulsar app on your device, login again if prompted, and resync Pulsar
+- Launch Pulsar on your device, login again if prompted, and resync Pulsar
 - After sync, navigate to the document under the Pulsar Content Library (Files) tab and open it
 
 Pulsar Developer REPL

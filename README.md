@@ -44,7 +44,7 @@ Extra Resources
 - [Admin/developer Pulsar for Salesforce Wiki](https://luminix.atlassian.net/wiki/spaces/PD) &mdash; toplevel wiki for Pulsar Setting for Salesforce admins
 - [Pulsar as a Platform](https://luminix.atlassian.net/wiki/spaces/PD/pages/49152017/3-1.+Pulsar+as+a+Platform) &mdash; information about building HTML/JS apps for Pulsar, _`.pulsarapp`_ format, etc
 - [Local Development Server](https://luminix.atlassian.net/wiki/spaces/PD/pages/831029249/Local+Development+Server)
-- [More complex Examples]()
+- [More complex Examples](https://github.com/luminixinc/PulsarForSalesforceAdvancedJSExamples)
 
 Lightning Web Components
 ------------------------

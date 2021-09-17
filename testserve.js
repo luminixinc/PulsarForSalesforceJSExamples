@@ -13,24 +13,23 @@
 // Please see the "Local Development Server" section on the wiki : https://luminix.atlassian.net/wiki/spaces/PD/overview
 //
 
-var http = require('http');
-var path = require('path');
-var fs = require('fs');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
 
-http.createServer(function (req, res) {
-    console.log('request starting...');
+http.createServer((req, res) => {
+  console.log('request starting...');
 
-    var filePath = path.join(__dirname, 'hello.html');
-    var stat = fs.statSync(filePath);
+  const filePath = path.join(__dirname, 'hello.html');
+  const stat = fs.statSync(filePath);
 
-    res.writeHead(200, {
-        'Content-Type': 'text/html',
-        'Content-Length': stat.size
-    });
+  res.writeHead(200, {
+    'Content-Type': 'text/html',
+    'Content-Length': stat.size,
+  });
 
-    var readStream = fs.createReadStream(filePath);
-    readStream.pipe(res);
-
+  const readStream = fs.createReadStream(filePath);
+  readStream.pipe(res);
 }).listen(3002);
 
 console.log('Server running at http://127.0.0.1:3002/');

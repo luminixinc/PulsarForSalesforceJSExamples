@@ -65,10 +65,13 @@
        * ***************************************************************/
       _bridge.init = function(_jsbridge) {
         if (BRIDGE_ON) {
-          _jsbridge.init(function(message, responseCallback) {
-            console.log('Received message: ' + message);
-          });
-
+          // prior to Pulsar 12.0, we need to call the init method
+          // version is only defined on Pulsar 12.0 and later
+          if (typeof _jsbridge.version === 'undefined') {
+            _jsbridge.init(function(message, responseCallback) {
+              console.log('Received message: ' + message);
+            });
+          }
           jsbridge = _jsbridge;
         }
       };
@@ -91,10 +94,10 @@
      * BEGIN Pulsar bootstrap boilerplate
      * ******************************/
 
-    const runningEmbedded = (window.top !== window.self); // are we running embedded in an iframe?
-    const runningStandAlone = !runningEmbedded;           // are we running in a stand-alone state in our own webview context?
-    var runningEmbeddedInFSL = false;                     // are we running embedded in an iframe within Pulsar for FSL context?
-    var refObjectId = undefined;                          // if launched from a record, this is the object Id in question
+    const runningEmbeddedInFSL =
+      typeof window.parent.pulsar !== 'undefined';    // are we running embedded in FSL
+    const runningStandAlone = !runningEmbeddedInFSL;  // are we running in a stand-alone state in our own webview context?
+    var refObjectId = undefined;                      // if launched from a record, this is the object Id in question
 
     /* ************************************************************************
      * This is the entry point when running your app stand-alone (directly from
@@ -120,7 +123,7 @@
     window.onload = embeddedBootstrap;
 
     function embeddedBootstrap() {
-      if (runningEmbedded && window.parent.pulsar && window.parent.pulsar.bridge) {
+      if (runningEmbeddedInFSL && window.parent.pulsar && window.parent.pulsar.bridge) {
         window.pulsar = window.parent.pulsar; // ensure we will pass down the embedded window.pulsar
         bridge.setup(window.pulsar.bridge); // ensure we are setup properly for this embedded context
 
@@ -129,7 +132,7 @@
 
         commonBootstrap();
       } else {
-        if (runningEmbedded) {
+        if (runningEmbeddedInFSL) {
           /* ************************************************************
            * Something has gone wrong if we are running embedded and find
            * ourselves without window.parent.pulsar.bridge or
@@ -161,13 +164,13 @@
        * parent context (running embedded).
        * ************************************************************/
       console.assert(window.pulsar.bridge !== undefined);
-      console.assert(!(runningEmbedded && runningStandAlone));
-      console.assert(runningEmbedded || runningStandAlone);
+      console.assert(!(runningEmbeddedInFSL && runningStandAlone));
+      console.assert(runningEmbeddedInFSL || runningStandAlone);
 
       refObjectId = getQueryVariable('ref_id');
 
       // log the launch context
-      console.log('Starting Custom Pulsar App' + (runningEmbedded ? ' embedded' : '') + (runningEmbeddedInFSL ? ' in FSL' : '') + (runningStandAlone ? ' stand alone' : '') + (refObjectId ? ' launched from record: ' + refObjectId : ''));
+      console.log('Starting Custom Pulsar App' + (runningEmbeddedInFSL ? ' embedded in FSL' : ' stand alone') + (refObjectId ? ' launched from record: ' + refObjectId : ''));
 
       // log any query variables
       console.log('query variables ' + stringify(getQueryVariables()));
@@ -250,7 +253,7 @@
       getSyncInfo();
 
       // this duplicates the console log from the bootstrap boilerplate above
-      const messageString = 'Started Custom Pulsar App' + (runningEmbedded ? ' embedded' : '') + (runningEmbeddedInFSL ? ' in FSL' : '') + (runningStandAlone ? ' stand alone' : '') + (refObjectId ? ' launched from record: ' + refObjectId : '');
+      const messageString = 'Started Custom Pulsar App' + (runningEmbeddedInFSL ? ' embedded in FSL' : ' stand alone') + (refObjectId ? ' launched from record: ' + refObjectId : '');
 
       const textElement = document.getElementById("AppStatus");
       textElement.innerHTML = messageString;
